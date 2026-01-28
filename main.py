@@ -10,6 +10,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 
 def get_full_page_screenshot(driver, path):
     """Uses Chrome DevTools Protocol to capture the entire page length."""
@@ -119,7 +120,7 @@ def main():
     options.add_argument("--window-size=1920,1080")
     
     driver = Chrome(options=options)
-    query = "Fathan"
+    query = "Your query here"
     screenshot_path = "full_screenshot.png"
     
     try:
