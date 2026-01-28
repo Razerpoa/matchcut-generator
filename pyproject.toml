@@ -11,4 +11,5 @@ dependencies = [
     "Pillow>=11.1.0",
     "numpy>=2.4.1",
     "ddgs>=9.10.0",
+    "opencv-contrib-python>=4.13.0.90",
 ]

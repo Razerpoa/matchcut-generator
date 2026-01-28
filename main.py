@@ -10,12 +10,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException
 from PIL import ImageOps
-
-def preprocess_for_ocr(img):
-    img = img.convert('L') # Grayscale
-    img = ImageOps.autocontrast(img)
-    # img = img.filter(ImageFilter.SHARPEN) # Optional: helps with small text
-    return img
+import cv2
+import numpy as np
 
 def get_limited_full_page_screenshot(driver, path, limit=4096):
     """Captures the page up to a specific height limit and stops."""
@@ -101,47 +97,76 @@ def handle_popups(driver):
     except:
         pass
 
+def preprocess_for_ocr(img):
+    # 1. Convert to Grayscale
+    img = img.convert('L')
+
+    # 2. Upscale the image (2x) - Very important for small web text
+    width, height = img.size
+    img = img.resize((width * 2, height * 2), resample=Image.LANCZOS)
+
+    # 3. Convert to OpenCV format for thresholding
+    open_cv_image = np.array(img)
+
+    # 4. Apply Otsu's Thresholding (converts to pure B&W)
+    _, thresh = cv2.threshold(open_cv_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    return Image.fromarray(thresh), 2 # Return image and the scale factor
+
 def process_ocr_and_crop(image_path, search_text, output_dir="crops", prefix="match", max_crops=10):
-    """OCR search with confidence filtering and padding."""
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    img = Image.open(image_path)
-    img = preprocess_for_ocr(img)
-    # config='--psm 11' is for sparse text
-    if os.name == 'nt':
-        pytesseract.pytesseract.tesseract_cmd = r'C:\Users\lenovo\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # Update this path as needed
-        
-    data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT, config='--psm 11')
+    original_img = Image.open(image_path)
+    processed_img, scale_factor = preprocess_for_ocr(original_img)
+
+    # config: psm 3 is often better for layouts; psm 11 for sparse text
+    config = '--psm 3'
+    data = pytesseract.image_to_data(processed_img, output_type=pytesseract.Output.DICT, config=config)
 
     found_count = 0
-    for i in range(len(data['text'])):
-        if found_count >= max_crops:
-            break
+    full_text = " ".join(data['text']).lower()
+    search_text = search_text.lower()
 
-        if int(data['conf'][i]) > 40 and search_text.lower() in data['text'][i].lower():
-            x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
+    # Find the start index of our search query in the full text string
+    if search_text in full_text:
+        # We need to find which indices in the 'data' dict correspond to our search text
+        words = search_text.split()
 
-            # Use a more balanced padding
-            pad = h * 4
-            left = max(0, x - pad)
-            top = max(0, y - pad)
-            right = min(img.width, x + w + pad)
-            bottom = min(img.height, y + h + pad)
+        for i in range(len(data['text']) - len(words) + 1):
+            if found_count >= max_crops: break
 
-            crop_img = img.crop((left, top, right, bottom))
-            crop_filename = f"{prefix.replace(' ', '_')}_{found_count}.png"
-            crop_path = os.path.join(output_dir, crop_filename)
-            crop_img.save(crop_path)
-            print(f"Cropped match at ({x}, {y}) -> {crop_path}")
-            found_count += 1
+            # Check if sequence of words matches
+            match_segment = " ".join(data['text'][i:i+len(words)]).lower()
+
+            if search_text in match_segment and int(data['conf'][i]) > 40:
+                # Calculate bounding box for the whole phrase
+                # Note: we must divide by scale_factor to map back to original image size
+                x = min(data['left'][i:i+len(words)]) // scale_factor
+                y = min(data['top'][i:i+len(words)]) // scale_factor
+                w = sum(data['width'][i:i+len(words)]) // scale_factor
+                h = max(data['height'][i:i+len(words)]) // scale_factor
+
+                pad = h * 3
+                left = max(0, x - pad)
+                top = max(0, y - pad)
+                right = min(original_img.width, x + w + pad)
+                bottom = min(original_img.height, y + h + pad)
+
+                crop_img = original_img.crop((left, top, right, bottom))
+                crop_filename = f"{prefix.replace(' ', '_')}_{found_count}.png"
+                crop_path = os.path.join(output_dir, crop_filename)
+                crop_img.save(crop_path)
+
+                print(f"Match found: '{match_segment}' at ({x}, {y})")
+                found_count += 1
 
     if found_count == 0:
-        print(f"No reliable OCR matches for '{search_text}' in {image_path}.")
+        print(f"No reliable matches for '{search_text}'.")
     return found_count
 
 def main():
-    query = "Kelulusan"
+    query = "Cristiano Ronaldo"
     max_results = 5
     max_crops_per_link = 10
     do_news = False
