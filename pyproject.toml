@@ -1,7 +1,7 @@
 [project]
 name = "matchcut-generator"
 version = "0.1.0"
-description = "Add your description here"
+description = "makes all the matchcut crops automatically"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -10,4 +10,5 @@ dependencies = [
     "pytesseract>=0.3.13",
     "Pillow>=11.1.0",
     "numpy>=2.4.1",
+    "ddgs>=9.10.0",
 ]
