@@ -15,7 +15,7 @@ import numpy as np
 import argparse
 import logging
 
-def get_limited_full_page_screenshot(driver, path, limit=4096):
+def get_limited_full_page_screenshot(driver: Chrome, path: str, limit: int = 4096) -> None:
     """Captures the page up to a specific height limit and stops."""
     metrics = driver.execute_cdp_cmd("Page.getLayoutMetrics", {})
     width = metrics['contentSize']['width']
@@ -57,7 +57,7 @@ def get_limited_full_page_screenshot(driver, path, limit=4096):
     driver.execute_cdp_cmd("Emulation.clearDeviceMetricsOverride", {})
     logging.info(f"Screenshot saved: {path}")
 
-def handle_popups(driver):
+def handle_popups(driver: Chrome) -> None:
     dismiss_keywords = ["Lain kali", "Not now", "No thanks", "Close", "Tutup"]
 
     # XPaths for text matches and common 'x' button attributes/symbols
@@ -99,13 +99,13 @@ def handle_popups(driver):
     except:
         pass
 
-def preprocess_for_ocr(img):
+def preprocess_for_ocr(img: Image.Image) -> tuple[Image.Image, int]:
     # 1. Convert to Grayscale
     img = img.convert('L')
 
     # 2. Upscale the image (2x) - Very important for small web text
     width, height = img.size
-    img = img.resize((width * 2, height * 2), resample=Image.LANCZOS)
+    img = img.resize((width * 2, height * 2), resample=Image.Resampling.LANCZOS)
 
     # 3. Convert to OpenCV format for thresholding
     open_cv_image = np.array(img)
@@ -115,7 +115,7 @@ def preprocess_for_ocr(img):
 
     return Image.fromarray(thresh), 2 # Return image and the scale factor
 
-def process_ocr_and_crop(image_path, search_text, output_dir="crops", prefix="match", max_crops=10):
+def process_ocr_and_crop(image_path: str, search_text: str, output_dir: str = "crops", prefix: str = "match", max_crops: int = 10) -> int:
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -166,7 +166,7 @@ def process_ocr_and_crop(image_path, search_text, output_dir="crops", prefix="ma
         logging.info(f"No reliable matches for '{search_text}'.")
     return found_count
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Matchcut Generator: Create crops from web screenshots based on OCR.")
     parser.add_argument("-s", "--search-query", type=str, help="Query to search on DuckDuckGo.")
     parser.add_argument("-o", "--ocr-query", type=str, help="Text to look for in screenshots via OCR.")
@@ -176,7 +176,7 @@ def parse_args():
     parser.add_argument("-hd", "--headless", action="store_true", help="Run in headless mode.")
     return parser.parse_args()
 
-def main():
+def main() -> None:
     args = parse_args()
     if not args.search_query or not args.ocr_query:
         sys.argv.append('-h')
