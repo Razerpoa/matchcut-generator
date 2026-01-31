@@ -1,6 +1,6 @@
 # Matchcut Generator
 
-This tool captures full-page screenshots of websites and automatically extracts text segments using OCR. It includes popup handling and precision cropping for content extraction.
+This tool automates the most tedious task when making a matchcut clip by automatically taking screenshot of various website and scan for the words using OCR and then crop it with an adjustable padding.
 
 ## Features
 
