@@ -9,7 +9,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException
-from PIL import ImageOps
 import cv2
 import numpy as np
 
@@ -45,7 +44,7 @@ def get_limited_full_page_screenshot(driver, path, limit=4096):
             "scale": 1
         },
         "fromSurface": True,
-        "captureBeyondViewport": True
+        "captureBeyondViewport": False
     })
 
     with open(path, "wb") as f:
