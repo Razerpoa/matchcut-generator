@@ -12,6 +12,7 @@ from selenium.common.exceptions import TimeoutException
 import cv2
 import numpy as np
 import argparse
+import logging
 
 def get_limited_full_page_screenshot(driver, path, limit=4096):
     """Captures the page up to a specific height limit and stops."""
@@ -23,7 +24,7 @@ def get_limited_full_page_screenshot(driver, path, limit=4096):
     capture_height = min(actual_height, limit)
 
     if actual_height > limit:
-        print(f"Note: Page is {actual_height}px. Limiting capture to {limit}px.")
+        logging.warning(f"Page is {actual_height}px. Limiting capture to {limit}px.")
 
     # Apply the dimensions
     driver.execute_cdp_cmd("Emulation.setDeviceMetricsOverride", {
@@ -53,7 +54,7 @@ def get_limited_full_page_screenshot(driver, path, limit=4096):
 
     # Clean up
     driver.execute_cdp_cmd("Emulation.clearDeviceMetricsOverride", {})
-    print(f"Screenshot saved: {path}")
+    logging.info(f"Screenshot saved: {path}")
 
 def handle_popups(driver):
     dismiss_keywords = ["Lain kali", "Not now", "No thanks", "Close", "Tutup"]
@@ -71,7 +72,7 @@ def handle_popups(driver):
             element = driver.find_element(By.XPATH, xpath)
             if element.is_displayed():
                 ActionChains(driver).move_to_element(element).click().perform()
-                print(f"Dismissed popup using: {xpath}")
+                logging.info(f"Dismissed popup using: {xpath}")
                 time.sleep(1)
                 return
         except:
@@ -90,7 +91,7 @@ def handle_popups(driver):
             }
         """)
     except Exception as e:
-        print(f"JS click failed: {e}")
+        logging.error(f"JS click failed: {e}")
 
     try:
         ActionChains(driver).send_keys(Keys.ESCAPE).perform()
@@ -157,24 +158,29 @@ def process_ocr_and_crop(image_path, search_text, output_dir="crops", prefix="ma
                 crop_filename = f"{prefix.replace(' ', '_')}_{found_count}.png"
                 crop_path = os.path.join(output_dir, crop_filename)
                 crop_img.save(crop_path)
-
-                print(f"Match found: '{match_segment}' at ({x}, {y})")
+                logging.info(f"Match found: '{match_segment}' at ({x}, {y})")
                 found_count += 1
 
     if found_count == 0:
-        print(f"No reliable matches for '{search_text}'.")
+        logging.info(f"No reliable matches for '{search_text}'.")
     return found_count
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Matchcut Generator: Create crops from web screenshots based on OCR.")
-    parser.add_argument("--search-query", type=str, default="Cristiano Ronaldo", help="Query to search on DuckDuckGo.")
-    parser.add_argument("--ocr-query", type=str, default="Cristiano Ronaldo", help="Text to look for in screenshots via OCR.")
-    parser.add_argument("--remove-screenshots", action="store_true", help="Remove the full screenshot file after processing.")
-    parser.add_argument("--max-results", type=int, default=5, help="Maximum number of search results to process.")
+    parser.add_argument("-s", "--search-query", type=str, default="Cristiano Ronaldo", help="Query to search on DuckDuckGo.")
+    parser.add_argument("-o", "--ocr-query", type=str, default="Cristiano Ronaldo", help="Text to look for in screenshots via OCR.")
+    parser.add_argument("-r", "--remove-screenshots", action="store_true", help="Remove the full screenshot file after processing.")
+    parser.add_argument("-m", "--max-results", type=int, default=5, help="Maximum number of search results to process.")
     return parser.parse_args()
 
 def main():
     args = parse_args()
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s"
+    )
     
     search_query = args.search_query
     ocr_query = args.ocr_query
@@ -189,12 +195,12 @@ def main():
     driver.set_page_load_timeout(5)
 
     try:
-        print(f"Searching DuckDuckGo for: {search_query}")
+        logging.info(f"Searching DuckDuckGo for: {search_query}")
         with DDGS() as ddgs:
             results = list(ddgs.text(search_query, max_results=max_results))
 
         if not results:
-            print("No search results found with any method. Please check your internet connection or query.")
+            logging.warning("No search results found. Please check your internet connection or query.")
             return
 
         for idx, result in enumerate(results):
@@ -202,13 +208,13 @@ def main():
             url = result.get('url') or result.get('href')
             if not url: continue
 
-            print(f"\n[{idx+1}/{len(results)}] Processing: {url}")
+            logging.info(f"[{idx+1}/{len(results)}] Processing: {url}")
 
             try:
                 try:
                     driver.get(url)
                 except TimeoutException:
-                    print(f"Wait timeout reached for {url}, proceeding with available content...")
+                    logging.warning(f"Wait timeout reached for {url}, proceeding with available content...")
 
                 time.sleep(2) # Give a bit more time for stable state
 
@@ -235,21 +241,20 @@ def main():
                     max_crops=max_crops_per_link
                 )
                 total_matches += matches
-
-                print(f"Finished processing site {idx}. Total matches found: {total_matches}")
+                logging.info(f"Finished processing site {idx}. Total matches found: {total_matches}")
 
                 if args.remove_screenshots and os.path.exists(screenshot_path):
                     os.remove(screenshot_path)
-                    print(f"Removed screenshot: {screenshot_path}")
+                    logging.info(f"Removed screenshot: {screenshot_path}")
 
             except Exception as e:
-                print(f"Error processing {url}: {e}")
+                logging.exception(f"Error processing {url}: {e}")
                 continue
 
     except Exception as e:
-        print(f"An error occurred during search or initialization: {e}")
+        logging.exception(f"An error occurred during search or initialization: {e}")
     finally:
-        print("Cleaning up driver...")
+        logging.info("Cleaning up driver...")
         driver.quit()
 
 if __name__ == "__main__":
