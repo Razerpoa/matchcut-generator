@@ -1,3 +1,4 @@
+import sys
 import time
 import os
 import base64
@@ -167,15 +168,23 @@ def process_ocr_and_crop(image_path, search_text, output_dir="crops", prefix="ma
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Matchcut Generator: Create crops from web screenshots based on OCR.")
-    parser.add_argument("-s", "--search-query", type=str, default="Cristiano Ronaldo", help="Query to search on DuckDuckGo.")
-    parser.add_argument("-o", "--ocr-query", type=str, default="Cristiano Ronaldo", help="Text to look for in screenshots via OCR.")
+    parser.add_argument("-s", "--search-query", type=str, help="Query to search on DuckDuckGo.")
+    parser.add_argument("-o", "--ocr-query", type=str, help="Text to look for in screenshots via OCR.")
     parser.add_argument("-r", "--remove-screenshots", action="store_true", help="Remove the full screenshot file after processing.")
     parser.add_argument("-m", "--max-results", type=int, default=5, help="Maximum number of search results to process.")
+    parser.add_argument("-cv", "--chrome-version", type=int, default=144, help="Chrome version to use.")
+    parser.add_argument("-hd", "--headless", action="store_true", help="Run in headless mode.")
     return parser.parse_args()
 
 def main():
     args = parse_args()
-    
+    if not args.search_query or not args.ocr_query:
+        sys.argv.append('-h')
+        try:
+            parse_args()
+        except SystemExit:
+            return
+
     # Configure logging
     logging.basicConfig(
         level=logging.INFO,
@@ -186,12 +195,13 @@ def main():
     ocr_query = args.ocr_query
     max_results = args.max_results
     max_crops_per_link = 10
+    headless = args.headless
 
     options = ChromeOptions()
-    options.add_argument("--headless")
+    options.add_argument("--headless" if headless else "")
     options.add_argument("--window-size=1920,1080")
 
-    driver = Chrome(options=options, version_main=144)
+    driver = Chrome(options=options, version_main=args.chrome_version)
     driver.set_page_load_timeout(5)
 
     try:
