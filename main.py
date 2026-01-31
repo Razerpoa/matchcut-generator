@@ -11,6 +11,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException
 import cv2
 import numpy as np
+import argparse
 
 def get_limited_full_page_screenshot(driver, path, limit=4096):
     """Captures the page up to a specific height limit and stops."""
@@ -164,10 +165,20 @@ def process_ocr_and_crop(image_path, search_text, output_dir="crops", prefix="ma
         print(f"No reliable matches for '{search_text}'.")
     return found_count
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Matchcut Generator: Create crops from web screenshots based on OCR.")
+    parser.add_argument("--search-query", type=str, default="Cristiano Ronaldo", help="Query to search on DuckDuckGo.")
+    parser.add_argument("--ocr-query", type=str, default="Cristiano Ronaldo", help="Text to look for in screenshots via OCR.")
+    parser.add_argument("--remove-screenshots", action="store_true", help="Remove the full screenshot file after processing.")
+    parser.add_argument("--max-results", type=int, default=5, help="Maximum number of search results to process.")
+    return parser.parse_args()
+
 def main():
-    search_query = "Cristiano Ronaldo"
-    ocr_query = "Cristiano Ronaldo"
-    max_results = 5
+    args = parse_args()
+    
+    search_query = args.search_query
+    ocr_query = args.ocr_query
+    max_results = args.max_results
     max_crops_per_link = 10
 
     options = ChromeOptions()
@@ -226,6 +237,10 @@ def main():
                 total_matches += matches
 
                 print(f"Finished processing site {idx}. Total matches found: {total_matches}")
+
+                if args.remove_screenshots and os.path.exists(screenshot_path):
+                    os.remove(screenshot_path)
+                    print(f"Removed screenshot: {screenshot_path}")
 
             except Exception as e:
                 print(f"Error processing {url}: {e}")
