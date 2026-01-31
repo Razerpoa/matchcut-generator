@@ -37,9 +37,9 @@ This tool automates the most tedious task when making a matchcut clip by automat
 
 The script now supports command-line arguments for easier configuration.
 
-Run the generator with default settings:
+The help command:
 ```bash
-uv run main.py
+uv run main.py --help
 ```
 
 Run with custom queries and options:
