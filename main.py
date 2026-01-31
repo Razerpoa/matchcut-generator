@@ -165,26 +165,22 @@ def process_ocr_and_crop(image_path, search_text, output_dir="crops", prefix="ma
     return found_count
 
 def main():
-    query = "Cristiano Ronaldo"
+    search_query = "Cristiano Ronaldo"
+    ocr_query = "Cristiano Ronaldo"
     max_results = 5
     max_crops_per_link = 10
-    do_news = False
 
     options = ChromeOptions()
-    # options.add_argument("--headless") # Commented out for visibility, can be enabled
+    options.add_argument("--headless")
     options.add_argument("--window-size=1920,1080")
 
     driver = Chrome(options=options, version_main=144)
     driver.set_page_load_timeout(5)
 
     try:
-        print(f"Searching DuckDuckGo for news: {query}")
+        print(f"Searching DuckDuckGo for: {search_query}")
         with DDGS() as ddgs:
-            # specifically use .news() for news search
-            if do_news:
-                results = list(ddgs.news(query, max_results=max_results))
-            else:
-                results = list(ddgs.text(query, max_results=max_results))
+            results = list(ddgs.text(search_query, max_results=max_results))
 
         if not results:
             print("No search results found with any method. Please check your internet connection or query.")
@@ -220,11 +216,11 @@ def main():
                 # We'll try to find any part of the query in the page
                 # search_keywords = query.split()
                 total_matches = 0
-                if len(query) < 4: continue # Skip short words
+                if len(ocr_query) < 4: continue # Skip short words
                 matches = process_ocr_and_crop(
                     screenshot_path,
-                    query,
-                    prefix=f"site_{idx}_{query.replace(' ', '_')}",
+                    ocr_query,
+                    prefix=f"site_{idx}_{ocr_query.replace(' ', '_')}",
                     max_crops=max_crops_per_link
                 )
                 total_matches += matches
