@@ -54,13 +54,6 @@ uv run main.py --search-query "Lionel Messi" --ocr-query "Messi" --remove-screen
 - `--remove-screenshots`: If provided, the full screenshot files will be deleted after processing to save space.
 - `--max-results`: The number of search results to process (default: 5).
 
-## Project Structure
-
-- main.py: Core logic for automation, screenshotting, and OCR.
-- crops/: Directory where extracted image segments are saved.
-- pyproject.toml: Dependency and project configuration.
-- .gitignore: Configured to ignore generated images and local environment files.
-
 ## Configuration
 
 - Confidence Threshold: You can adjust OCR sensitivity by modifying the confidence check in main.py.
