@@ -17,7 +17,7 @@ This tool automates the most tedious task when making a matchcut clip by automat
 - Tesseract OCR:
   - Linux: sudo apt install tesseract-ocr
   - macOS: brew install tesseract
-  - Windows: Download binaries from the Tesseract GitHub wiki
+  - Windows: Download [Tesseract](https://sourceforge.net/projects/tesseract-ocr-alt/files/tesseract-ocr-setup-3.02.02.exe/download) 
 - uv (Recommended for dependency management)
 
 ## Installation
