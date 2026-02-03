@@ -174,6 +174,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-m", "--max-results", type=int, default=5, help="Maximum number of search results to process.")
     parser.add_argument("-cv", "--chrome-version", type=int, default=144, help="Chrome version to use.")
     parser.add_argument("-hd", "--headless", action="store_true", help="Run in headless mode.")
+    parser.add_argument("-mc", "--max-crops-per-link", type=int, default=10, help="Max crops per links.")
     return parser.parse_args()
 
 def main() -> None:
@@ -194,7 +195,7 @@ def main() -> None:
     search_query = args.search_query
     ocr_query = args.ocr_query
     max_results = args.max_results
-    max_crops_per_link = 10
+    max_crops_per_link = args.max_crops_per_link
     headless = args.headless
 
     options = ChromeOptions()
