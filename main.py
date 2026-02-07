@@ -170,7 +170,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Matchcut Generator: Create crops from web screenshots based on OCR.")
     parser.add_argument("-s", "--search-query", type=str, help="Query to search on DuckDuckGo.")
     parser.add_argument("-o", "--ocr-query", type=str, help="Text to look for in screenshots via OCR.")
-    parser.add_argument("-r", "--remove-screenshots", action="store_true", help="Remove the full screenshot file after processing.")
+    parser.add_argument("-k", "--keep-screenshots", action="store_true", help="Keep the full screenshot file after processing (default: False).")
     parser.add_argument("-m", "--max-results", type=int, default=5, help="Maximum number of search results to process.")
     parser.add_argument("-cv", "--chrome-version", type=int, default=144, help="Chrome version to use.")
     parser.add_argument("-hd", "--headless", action="store_true", help="Run in headless mode.")
@@ -254,7 +254,7 @@ def main() -> None:
                 total_matches += matches
                 logging.info(f"Finished processing site {idx}. Total matches found: {total_matches}")
 
-                if args.remove_screenshots and os.path.exists(screenshot_path):
+                if not args.keep_screenshots and os.path.exists(screenshot_path):
                     os.remove(screenshot_path)
                     logging.info(f"Removed screenshot: {screenshot_path}")
 

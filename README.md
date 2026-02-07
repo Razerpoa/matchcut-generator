@@ -45,14 +45,19 @@ uv run main.py --help
 
 Run with custom queries and options:
 ```bash
-uv run main.py --search-query "Lionel Messi" --ocr-query "Messi" --remove-screenshots
+uv run main.py --search-query "Lionel Messi" --ocr-query "Messi"
+```
+
+To keep the full screenshots, use the `--keep-screenshots` flag:
+```bash
+uv run main.py --search-query "Lionel Messi" --ocr-query "Messi" --keep-screenshots
 ```
 
 ### Arguments
 
 - `--search-query`: The query to search on DuckDuckGo (default: "Cristiano Ronaldo").
 - `--ocr-query`: The specific text to look for in screenshots via OCR (default: "Cristiano Ronaldo").
-- `--remove-screenshots`: If provided, the full screenshot files will be deleted after processing to save space.
+- `-k`, `--keep-screenshots`: If provided, the full screenshot files will be kept. By default, they are removed after processing.
 - `--max-results`: The number of search results to process (default: 5).
 
 ## Configuration
