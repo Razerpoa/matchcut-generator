@@ -7,7 +7,7 @@ This tool automates the most tedious task when making a matchcut clip by automat
 - CDP Full-Page Capture: Uses Chrome DevTools Protocol to capture high-resolution screenshots of the entire page content, bypassing standard scroll limitations.
 - Smart Popup Handling: Automatically detects and dismisses common popups like consent bars and notification prompts using text analysis, JavaScript, and keyboard interactions.
 - OCR-Based Cropping: Utilizes Tesseract OCR to locate specific keywords and crops the image around them with dynamic padding.
-- Undetected Automation: Built on undetected-chromedriver to mimic human behavior and avoid automated browser detection.
+- Undetected Automation: Built on undetected-chromedriver to mimic human behavior. Runs in headless mode by default.
 - Content Loading: Includes logic to scroll and trigger lazy-loaded images or other dynamic content before capturing.
 
 ## Prerequisites
@@ -58,6 +58,7 @@ uv run main.py --search-query "Lionel Messi" --ocr-query "Messi" --keep-screensh
 - `--search-query`: The query to search on DuckDuckGo (default: "Cristiano Ronaldo").
 - `--ocr-query`: The specific text to look for in screenshots via OCR (default: "Cristiano Ronaldo").
 - `-k`, `--keep-screenshots`: If provided, the full screenshot files will be kept. By default, they are removed after processing.
+- `-sb`, `--show-browser`: If provided, the browser window will be visible. By default, it runs in headless mode.
 - `--max-results`: The number of search results to process (default: 5).
 
 ## Configuration
