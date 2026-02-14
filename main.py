@@ -1,3 +1,4 @@
+import pytesseract
 import sys
 import time
 import os
@@ -14,6 +15,17 @@ import cv2
 import numpy as np
 import argparse
 import logging
+import threading
+import queue
+import tkinter as tk
+from tkinter import ttk, scrolledtext, messagebox
+
+# Global queue for logging
+log_queue = queue.Queue()
+
+class QueueHandler(logging.Handler):
+    def emit(self, record):
+        log_queue.put(self.format(record))
 
 def get_limited_full_page_screenshot(driver: Chrome, path: str, limit: int = 4096) -> None:
     """Captures the page up to a specific height limit and stops."""
@@ -177,15 +189,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-mc", "--max-crops-per-link", type=int, default=10, help="Max crops per links.")
     return parser.parse_args()
 
-def main() -> None:
-    args = parse_args()
-    if not args.search_query or not args.ocr_query:
-        sys.argv.append('-h')
-        try:
-            parse_args()
-        except SystemExit:
-            return
-
+def run_scraper(args, progress_callback=None):
     # Configure logging
     logging.basicConfig(
         level=logging.INFO,
@@ -198,23 +202,55 @@ def main() -> None:
     max_crops_per_link = args.max_crops_per_link
     headless = not args.show_browser
 
-    options = ChromeOptions()
-    options.add_argument("--headless" if headless else "")
-    options.add_argument("--window-size=1920,1080")
-
-    driver = Chrome(options=options, version_main=args.chrome_version)
-    driver.set_page_load_timeout(5)
+    driver = None # Initialize driver to None
 
     try:
+        # Tesseract is already checked in main(), so we can skip the detailed check here.
+        # However, we can keep a simple check or just proceed.
+        # Since main() guarantees Tesseract is configured, we'll just log that we are starting.
+        logging.info("Starting scraper...")
+
+        if progress_callback:
+            progress_callback(0, 0, f"Searching for '{search_query}'...")
+        print(f"DEBUG: Starting DDGS search for '{search_query}'...", file=sys.stderr)
         logging.info(f"Searching DuckDuckGo for: {search_query}")
-        with DDGS() as ddgs:
-            results = list(ddgs.text(search_query, max_results=max_results))
+        
+        try:
+            with DDGS() as ddgs:
+                results = list(ddgs.text(search_query, max_results=max_results))
+            print(f"DEBUG: DDGS search returned {len(results)} results.", file=sys.stderr)
+        except Exception as e:
+            logging.error(f"Search failed: {e}")
+            if progress_callback:
+                progress_callback(0, 0, "Error: Search failed. Check internet.")
+            return
 
         if not results:
             logging.warning("No search results found. Please check your internet connection or query.")
+            if progress_callback:
+                progress_callback(0, 0, "No results found.")
             return
 
+        # Initialize Chrome Driver
+        if progress_callback:
+            progress_callback(0, 0, "Initializing Browser...")
+        print("DEBUG: Initializing Chrome driver...", file=sys.stderr)
+        
+        options = ChromeOptions()
+        options.add_argument("--headless" if headless else "")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--mute-audio") # Mute audio
+
+        driver = Chrome(options=options, version_main=args.chrome_version)
+        driver.set_page_load_timeout(30) # Increased timeout
+        print("DEBUG: Chrome driver initialized.", file=sys.stderr)
+
+        total_steps = len(results)
+        
         for idx, result in enumerate(results):
+            if progress_callback:
+                progress_callback(idx, total_steps, f"Processing {idx+1}/{total_steps}: {result.get('title', 'Unknown')}")
+
             # DDGS news results use 'url' key, text results use 'href'
             url = result.get('url') or result.get('href')
             if not url: continue
@@ -244,15 +280,24 @@ def main() -> None:
                 # We'll try to find any part of the query in the page
                 # search_keywords = query.split()
                 total_matches = 0
-                if len(ocr_query) < 4: continue # Skip short words
-                matches = process_ocr_and_crop(
-                    screenshot_path,
-                    ocr_query,
-                    prefix=f"site_{idx}_{ocr_query.replace(' ', '_')}",
-                    max_crops=max_crops_per_link
-                )
-                total_matches += matches
-                logging.info(f"Finished processing site {idx}. Total matches found: {total_matches}")
+                if len(ocr_query) < 4: 
+                    logging.warning(f"OCR Query '{ocr_query}' is too short (min 4 chars). Skipping OCR.")
+                    continue # Skip short words
+                
+                try:
+                    matches = process_ocr_and_crop(
+                        screenshot_path,
+                        ocr_query,
+                        prefix=f"site_{idx}_{ocr_query.replace(' ', '_')}",
+                        max_crops=max_crops_per_link
+                    )
+                    total_matches += matches
+                    logging.info(f"Finished processing site {idx}. Total matches found: {total_matches}")
+                except pytesseract.TesseractNotFoundError:
+                     logging.error("Tesseract not found during processing. Please install Tesseract.")
+                     break # Stop processing if Tesseract is missing
+                except Exception as e:
+                    logging.exception(f"OCR/Crop failed for site {idx}: {e}")
 
                 if not args.keep_screenshots and os.path.exists(screenshot_path):
                     os.remove(screenshot_path)
@@ -261,12 +306,207 @@ def main() -> None:
             except Exception as e:
                 logging.exception(f"Error processing {url}: {e}")
                 continue
+        
+        if progress_callback:
+             progress_callback(total_steps, total_steps, "Done!")
 
     except Exception as e:
         logging.exception(f"An error occurred during search or initialization: {e}")
     finally:
-        logging.info("Cleaning up driver...")
-        driver.quit()
+        if driver:
+            logging.info("Cleaning up driver...")
+            try:
+                driver.quit()
+            except Exception as e:
+                logging.error(f"Error closing driver: {e}")
+
+class GuiApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Matchcut Generator GUI")
+        self.root.geometry("600x750")
+
+        self.create_widgets()
+        self.root.after(100, self.poll_log_queue)
+
+    def create_widgets(self):
+        # Input Frame
+        input_frame = ttk.LabelFrame(self.root, text="Configuration", padding="10")
+        input_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        # Search Query
+        ttk.Label(input_frame, text="Search Query:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        self.search_query_var = tk.StringVar()
+        ttk.Entry(input_frame, textvariable=self.search_query_var, width=50).grid(row=0, column=1, sticky=tk.W, pady=2)
+
+        # OCR Query
+        ttk.Label(input_frame, text="OCR Query:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.ocr_query_var = tk.StringVar()
+        ttk.Entry(input_frame, textvariable=self.ocr_query_var, width=50).grid(row=1, column=1, sticky=tk.W, pady=2)
+
+        # Max Results
+        ttk.Label(input_frame, text="Max Results:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        self.max_results_var = tk.IntVar(value=5)
+        ttk.Spinbox(input_frame, from_=1, to=100, textvariable=self.max_results_var, width=10).grid(row=2, column=1, sticky=tk.W, pady=2)
+
+        # Max Crops Per Link
+        ttk.Label(input_frame, text="Max Crops/Link:").grid(row=3, column=0, sticky=tk.W, pady=2)
+        self.max_crops_var = tk.IntVar(value=10)
+        ttk.Spinbox(input_frame, from_=1, to=50, textvariable=self.max_crops_var, width=10).grid(row=3, column=1, sticky=tk.W, pady=2)
+
+        # Chrome Version
+        ttk.Label(input_frame, text="Chrome Version:").grid(row=4, column=0, sticky=tk.W, pady=2)
+        self.chrome_version_var = tk.IntVar(value=144)
+        ttk.Entry(input_frame, textvariable=self.chrome_version_var, width=10).grid(row=4, column=1, sticky=tk.W, pady=2)
+
+        # Checkboxes
+        self.keep_screenshots_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(input_frame, text="Keep Screenshots", variable=self.keep_screenshots_var).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=2)
+
+        self.show_browser_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(input_frame, text="Show Browser", variable=self.show_browser_var).grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=2)
+
+        # Run Button
+        self.run_btn = ttk.Button(self.root, text="Run Scraper", command=self.start_scraping)
+        self.run_btn.pack(pady=10)
+        
+        # Progress Bar and Status
+        progress_frame = ttk.Frame(self.root)
+        progress_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        self.status_label = ttk.Label(progress_frame, text="Ready")
+        self.status_label.pack(anchor=tk.W)
+        
+        self.progress = ttk.Progressbar(progress_frame, orient=tk.HORIZONTAL, length=100, mode='determinate')
+        self.progress.pack(fill=tk.X, pady=5)
+
+        # Logs
+        log_frame = ttk.LabelFrame(self.root, text="Logs", padding="10")
+        log_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        self.log_area = scrolledtext.ScrolledText(log_frame, state='disabled', height=10)
+        self.log_area.pack(fill=tk.BOTH, expand=True)
+
+    def start_scraping(self):
+        search = self.search_query_var.get()
+        ocr = self.ocr_query_var.get()
+        
+        if not search or not ocr:
+            messagebox.showerror("Error", "Search Query and OCR Query are required!")
+            return
+
+        self.run_btn.config(state='disabled')
+        self.log_area.config(state='normal')
+        self.log_area.delete(1.0, tk.END)
+        self.log_area.config(state='disabled')
+        self.progress['value'] = 0
+        self.status_label.config(text="Starting...")
+
+        args = argparse.Namespace(
+            search_query=search,
+            ocr_query=ocr,
+            keep_screenshots=self.keep_screenshots_var.get(),
+            max_results=self.max_results_var.get(),
+            chrome_version=self.chrome_version_var.get(),
+            show_browser=self.show_browser_var.get(),
+            max_crops_per_link=self.max_crops_var.get()
+        )
+
+        threading.Thread(target=self.run_thread, args=(args,), daemon=True).start()
+
+    def run_thread(self, args):
+        run_scraper(args, self.progress_callback)
+        self.root.after(0, self.finish_scraping)
+        
+    def progress_callback(self, current, total, message):
+         self.root.after(0, lambda: self.update_progress(current, total, message))
+
+    def update_progress(self, current, total, message):
+        if total > 0:
+            self.progress['value'] = (current / total) * 100
+        self.status_label.config(text=message)
+
+    def finish_scraping(self):
+        self.run_btn.config(state='normal')
+        self.status_label.config(text="Finished")
+        messagebox.showinfo("Info", "Scraping Completed!")
+
+    def poll_log_queue(self):
+        while not log_queue.empty():
+            msg = log_queue.get()
+            self.log_area.config(state='normal')
+            self.log_area.insert(tk.END, msg + "\n")
+            self.log_area.see(tk.END)
+            self.log_area.config(state='disabled')
+        self.root.after(100, self.poll_log_queue)
+
+def check_tesseract() -> bool:
+    """Checks if Tesseract is installed and configurable."""
+    # 1. Check if it's already in PATH
+    try:
+        pytesseract.get_tesseract_version()
+        logging.info("Tesseract found in PATH.")
+        return True
+    except (pytesseract.TesseractNotFoundError, SystemExit):
+        pass
+
+    # 2. Check common installation paths
+    tesseract_paths = [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        os.path.join(os.getenv('LOCALAPPDATA', ''), r"Tesseract-OCR\tesseract.exe")
+    ]
+
+    for path in tesseract_paths:
+        if os.path.exists(path):
+            pytesseract.pytesseract.tesseract_cmd = path
+            logging.info(f"Found Tesseract at: {path}")
+            return True
+            
+    return False
+
+def main() -> None:
+    # Configure logging for CLI usage (GUI will override/add handler)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+
+    # Pre-check Tesseract
+    if not check_tesseract():
+        error_msg = "Tesseract OCR not found. Please install it from https://github.com/UB-Mannheim/tesseract/wiki"
+        logging.error(error_msg)
+        
+        # If running without args (likely GUI mode or double-click), show alert
+        if len(sys.argv) == 1:
+            try:
+                # Create a hidden root window just to show the error
+                root = tk.Tk()
+                root.withdraw() 
+                messagebox.showerror("Tesseract Not Found", error_msg)
+                root.destroy()
+            except Exception:
+                pass # If tk fails, we at least logged it
+        
+        sys.exit(1)
+
+    # Check if arguments are provided
+    if len(sys.argv) > 1:
+        args = parse_args()
+        run_scraper(args)
+    else:
+        # GUI Mode
+        # Setup queue handler for logging
+        handler = QueueHandler()
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        handler.setFormatter(formatter)
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+        root_logger.addHandler(handler)
+
+        root = tk.Tk()
+        app = GuiApp(root)
+        root.mainloop()
 
 if __name__ == "__main__":
     main()
