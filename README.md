@@ -18,7 +18,9 @@ This tool automates the most tedious task when making a matchcut clip by automat
   - Ubuntu/Debian: sudo apt install tesseract-ocr
   - Arch Linux: sudo pacman -S tesseract
   - macOS: brew install tesseract
-  - Windows: Download [Tesseract](https://github.com/tesseract-ocr/tesseract/releases/download/5.5.0/tesseract-ocr-w64-setup-5.5.0.20241111.exe)
+  - Windows: Download and install [The Tesseract Installer](https://github.com/UB-Mannheim/tesseract/wiki).
+    - Ensure it is installed in `C:\Program Files\Tesseract-OCR` or `C:\Program Files (x86)\Tesseract-OCR`.
+    - Alternatively, add the installation folder to your system `PATH`.
 - uv (Recommended for dependency management)
 
 ## Installation
@@ -36,7 +38,23 @@ This tool automates the most tedious task when making a matchcut clip by automat
 
 ## Usage
 
-The script now supports command-line arguments for easier configuration.
+The tool can be run in two modes: **GUI Mode** (User Interface) and **CLI Mode** (Command Line).
+
+### GUI Mode
+Simply run the script without any arguments to launch the graphical user interface:
+```bash
+uv run main.py
+```
+This will open a window where you can setting up:
+- **Search Query**: What to search for on DuckDuckGo.
+- **OCR Query**: The text to find and crop in the screenshots.
+- **Max Results**: Number of websites into scrape.
+- **Keep Screenshots**: Checkbox to save the full page screenshots.
+- **Show Browser**: Checkbox to see the browser in action (useful for debugging).
+- **Max Crops**: Limit crops per website.
+
+### CLI Mode
+You can also run it purely from the command line for automation or scripts:
 
 The help command:
 ```bash
@@ -55,11 +73,12 @@ uv run main.py --search-query "Lionel Messi" --ocr-query "Messi" --keep-screensh
 
 ### Arguments
 
-- `--search-query`: The query to search on DuckDuckGo (default: "Cristiano Ronaldo").
-- `--ocr-query`: The specific text to look for in screenshots via OCR (default: "Cristiano Ronaldo").
+- `-s`, `--search-query`: The query to search on DuckDuckGo.
+- `-o`, `--ocr-query`: The specific text to look for in screenshots via OCR.
 - `-k`, `--keep-screenshots`: If provided, the full screenshot files will be kept. By default, they are removed after processing.
 - `-sb`, `--show-browser`: If provided, the browser window will be visible. By default, it runs in headless mode.
-- `--max-results`: The number of search results to process (default: 5).
+- `-m`, `--max-results`: The number of search results to process (default: 5).
+- `-mc`, `--max-crops-per-link`: The maximum number of crops to extract from a single webpage (default: 10).
 
 ## Configuration
 
