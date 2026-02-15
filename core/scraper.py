@@ -1,4 +1,3 @@
-import sys
 import time
 import os
 import logging
@@ -9,6 +8,7 @@ import pytesseract
 
 from .browser import get_limited_full_page_screenshot, handle_popups
 from .vision import process_ocr_and_crop
+from .utils import PAD_H_DEFAULT, PAD_W_DEFAULT
 
 def run_scraper(args, progress_callback=None):
     # Configure logging if no handlers exist
@@ -115,8 +115,8 @@ def run_scraper(args, progress_callback=None):
                         ocr_query,
                         prefix=f"site_{idx}_{ocr_query.replace(' ', '_')}",
                         max_crops=max_crops_per_link,
-                        pad_h=getattr(args, 'pad_h', 5.0),
-                        pad_w=getattr(args, 'pad_w', 1.0)
+                        pad_h=getattr(args, 'pad_h', PAD_H_DEFAULT),
+                        pad_w=getattr(args, 'pad_w', PAD_W_DEFAULT)
                     )
                     total_matches += matches
                     logging.info(f"Finished processing site {idx}. Total matches found: {total_matches}")

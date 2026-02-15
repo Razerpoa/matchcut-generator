@@ -12,3 +12,4 @@ wheels/
 crops/
 *.png
 *.jpg
+output/

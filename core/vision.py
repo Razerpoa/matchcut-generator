@@ -5,6 +5,8 @@ import numpy as np
 import pytesseract
 from PIL import Image
 
+from .utils import PAD_H_DEFAULT, PAD_W_DEFAULT
+
 def preprocess_for_ocr(img: Image.Image) -> tuple[Image.Image, int]:
     # 1. Convert to Grayscale
     img = img.convert('L')
@@ -21,7 +23,7 @@ def preprocess_for_ocr(img: Image.Image) -> tuple[Image.Image, int]:
 
     return Image.fromarray(thresh), 2 # Return image and the scale factor
 
-def process_ocr_and_crop(image_path: str, search_text: str, output_dir: str = "crops", prefix: str = "match", max_crops: int = 10, pad_h: float = 5.0, pad_w: float = 1.0) -> int:
+def process_ocr_and_crop(image_path: str, search_text: str, output_dir: str = "crops", prefix: str = "match", max_crops: int = 10, pad_h: float = PAD_H_DEFAULT, pad_w: float = PAD_W_DEFAULT) -> int:
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
