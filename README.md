@@ -1,6 +1,6 @@
 # Matchcut Generator
 
-This tool automates the most tedious task when making a matchcut clip by automatically taking screenshot of various website and scan for the words using OCR and then crop it with an adjustable padding.
+This tool makes the clips for a Text Matchcut Video. After you run the tool you can start making the Matchcut on your favorite editing software.
 
 ## Features
 
@@ -13,14 +13,13 @@ This tool automates the most tedious task when making a matchcut clip by automat
 ## Prerequisites
 
 - Python 3.12 or higher
-- Google Chrome (google-chrome-stable)
+- Google Chrome
 - Tesseract OCR:
   - Ubuntu/Debian: sudo apt install tesseract-ocr
   - Arch Linux: sudo pacman -S tesseract
   - macOS: brew install tesseract
   - Windows: Download and install [The Tesseract Installer](https://github.com/UB-Mannheim/tesseract/wiki).
-    - Ensure it is installed in `C:\Program Files\Tesseract-OCR` or `C:\Program Files (x86)\Tesseract-OCR`.
-    - Alternatively, add the installation folder to your system `PATH`.
+    - Ensure it is installed and added to PATH.
 - uv (Recommended for dependency management)
 
 ## Installation
@@ -80,8 +79,6 @@ uv run main.py --search-query "Lionel Messi" --ocr-query "Messi" --keep-screensh
 - `-m`, `--max-results`: The number of search results to process (default: 5).
 - `-mc`, `--max-crops-per-link`: The maximum number of crops to extract from a single webpage (default: 10).
 
-## Configuration
+## License
 
-- Confidence Threshold: You can adjust OCR sensitivity by modifying the confidence check in main.py.
-- Padding: Change the `pad` variable in main.py to adjust how much context is included around detected matches.
-- Window Size: Set your preferred resolution in the ChromeOptions within main.py.
+MIT [LICENSE](LICENSE)
