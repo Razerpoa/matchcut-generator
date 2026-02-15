@@ -60,7 +60,7 @@ class GuiApp:
 
         # Padding Settings
         ttk.Label(input_frame, text="Vertical Padding:").grid(row=6, column=0, sticky=tk.W, pady=2)
-        self.pad_h_var = tk.DoubleVar(value=3.0)
+        self.pad_h_var = tk.DoubleVar(value=5.0)
         ttk.Entry(input_frame, textvariable=self.pad_h_var, width=10).grid(row=6, column=1, sticky=tk.W, pady=2)
 
         ttk.Label(input_frame, text="Horizontal Padding:").grid(row=7, column=0, sticky=tk.W, pady=2)

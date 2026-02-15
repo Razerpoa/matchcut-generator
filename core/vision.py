@@ -21,7 +21,7 @@ def preprocess_for_ocr(img: Image.Image) -> tuple[Image.Image, int]:
 
     return Image.fromarray(thresh), 2 # Return image and the scale factor
 
-def process_ocr_and_crop(image_path: str, search_text: str, output_dir: str = "crops", prefix: str = "match", max_crops: int = 10, pad_h: float = 3.0, pad_w: float = 1.0) -> int:
+def process_ocr_and_crop(image_path: str, search_text: str, output_dir: str = "crops", prefix: str = "match", max_crops: int = 10, pad_h: float = 5.0, pad_w: float = 1.0) -> int:
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 

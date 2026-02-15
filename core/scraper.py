@@ -115,7 +115,7 @@ def run_scraper(args, progress_callback=None):
                         ocr_query,
                         prefix=f"site_{idx}_{ocr_query.replace(' ', '_')}",
                         max_crops=max_crops_per_link,
-                        pad_h=getattr(args, 'pad_h', 3.0),
+                        pad_h=getattr(args, 'pad_h', 5.0),
                         pad_w=getattr(args, 'pad_w', 1.0)
                     )
                     total_matches += matches
