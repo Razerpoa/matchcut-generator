@@ -58,12 +58,21 @@ class GuiApp:
         self.chrome_path_var = tk.StringVar()
         ttk.Entry(input_frame, textvariable=self.chrome_path_var, width=50).grid(row=5, column=1, sticky=tk.W, pady=2)
 
+        # Padding Settings
+        ttk.Label(input_frame, text="Vertical Padding:").grid(row=6, column=0, sticky=tk.W, pady=2)
+        self.pad_h_var = tk.DoubleVar(value=3.0)
+        ttk.Entry(input_frame, textvariable=self.pad_h_var, width=10).grid(row=6, column=1, sticky=tk.W, pady=2)
+
+        ttk.Label(input_frame, text="Horizontal Padding:").grid(row=7, column=0, sticky=tk.W, pady=2)
+        self.pad_w_var = tk.DoubleVar(value=1.0)
+        ttk.Entry(input_frame, textvariable=self.pad_w_var, width=10).grid(row=7, column=1, sticky=tk.W, pady=2)
+
         # Checkboxes
         self.keep_screenshots_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(input_frame, text="Keep Screenshots", variable=self.keep_screenshots_var).grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=2)
+        ttk.Checkbutton(input_frame, text="Keep Screenshots", variable=self.keep_screenshots_var).grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=2)
 
         self.show_browser_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(input_frame, text="Show Browser", variable=self.show_browser_var).grid(row=7, column=0, columnspan=2, sticky=tk.W, pady=2)
+        ttk.Checkbutton(input_frame, text="Show Browser", variable=self.show_browser_var).grid(row=9, column=0, columnspan=2, sticky=tk.W, pady=2)
 
         # Run Button
         self.run_btn = ttk.Button(self.root, text="Run Scraper", command=self.start_scraping)
@@ -113,7 +122,9 @@ class GuiApp:
             chrome_version=self.chrome_version_var.get(),
             show_browser=self.show_browser_var.get(),
             max_crops_per_link=self.max_crops_var.get(),
-            chrome_path=self.chrome_path_var.get()
+            chrome_path=self.chrome_path_var.get(),
+            pad_h=self.pad_h_var.get(),
+            pad_w=self.pad_w_var.get()
         )
 
         threading.Thread(target=self.run_thread, args=(args,), daemon=True).start()

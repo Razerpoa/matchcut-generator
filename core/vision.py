@@ -21,7 +21,7 @@ def preprocess_for_ocr(img: Image.Image) -> tuple[Image.Image, int]:
 
     return Image.fromarray(thresh), 2 # Return image and the scale factor
 
-def process_ocr_and_crop(image_path: str, search_text: str, output_dir: str = "crops", prefix: str = "match", max_crops: int = 10) -> int:
+def process_ocr_and_crop(image_path: str, search_text: str, output_dir: str = "crops", prefix: str = "match", max_crops: int = 10, pad_h: float = 3.0, pad_w: float = 1.0) -> int:
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -94,13 +94,13 @@ def process_ocr_and_crop(image_path: str, search_text: str, output_dir: str = "c
         h = (max_y - min_y) // scale_factor
         
         # Padding
-        pad_h = h * 3 # vertical padding
-        pad_w = w * 1 # add some horizontal padding too
+        pad_h_px = int(h * pad_h) # vertical padding
+        pad_w_px = int(w * pad_w) # add some horizontal padding too
         
-        left = max(0, x - pad_w)
-        top = max(0, y - pad_h)
-        right = min(original_img.width, x + w + pad_w)
-        bottom = min(original_img.height, y + h + pad_h)
+        left = max(0, x - pad_w_px)
+        top = max(0, y - pad_h_px)
+        right = min(original_img.width, x + w + pad_w_px)
+        bottom = min(original_img.height, y + h + pad_h_px)
         
         crop_img = original_img.crop((left, top, right, bottom))
         crop_filename = f"{prefix.replace(' ', '_')}_{found_count}.png"

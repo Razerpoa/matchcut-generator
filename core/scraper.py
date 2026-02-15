@@ -114,7 +114,9 @@ def run_scraper(args, progress_callback=None):
                         screenshot_path,
                         ocr_query,
                         prefix=f"site_{idx}_{ocr_query.replace(' ', '_')}",
-                        max_crops=max_crops_per_link
+                        max_crops=max_crops_per_link,
+                        pad_h=getattr(args, 'pad_h', 3.0),
+                        pad_w=getattr(args, 'pad_w', 1.0)
                     )
                     total_matches += matches
                     logging.info(f"Finished processing site {idx}. Total matches found: {total_matches}")
