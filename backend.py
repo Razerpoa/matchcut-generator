@@ -240,35 +240,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-cp", "--chrome-path", type=str, help="Path to Chrome executable (optional).")
     return parser.parse_args()
 
-def find_chrome_executable() -> str:
-    """Finds the Chrome/Chromium executable across Windows and Linux."""
-    if sys.platform == "win32":
-        paths = [
-            os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Google", "Chrome", "Application", "chrome.exe"),
-            os.path.join(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"), "Google", "Chrome", "Application", "chrome.exe"),
-            os.path.join(os.environ.get("LocalAppData", ""), "Google", "Chrome", "Application", "chrome.exe"),
-        ]
-    else: # Linux/Mac
-        paths = [
-            "/usr/bin/google-chrome",
-            "/usr/bin/google-chrome-stable",
-            "/usr/bin/chromium",
-            "/usr/bin/chromium-browser",
-            "/snap/bin/chromium",
-            "/opt/google/chrome/google-chrome",
-        ]
-
-    for path in paths:
-        if os.path.exists(path):
-            return path
-    
-    # If not found in common paths, try 'which' on Linux or just return None
-    if sys.platform != "win32":
-        import shutil
-        return shutil.which("google-chrome") or shutil.which("chromium") or shutil.which("chromium-browser")
-        
-    return None
-
 def run_scraper(args, progress_callback=None):
     # Configure logging
     # Note: BasicConfig should only be called if handlers aren't set, 
@@ -334,14 +305,6 @@ def run_scraper(args, progress_callback=None):
         options.add_argument("--headless" if headless else "")
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--mute-audio") # Mute audio
-
-        chrome_path = getattr(args, 'chrome_path', None) or find_chrome_executable()
-        
-        if chrome_path:
-             logging.info(f"Using Chrome binary at: {chrome_path}")
-             options.binary_location = chrome_path
-        else:
-             logging.warning("Chrome binary path not found automatically. undetected_chromedriver will try to locate it.")
 
         try:
             driver = Chrome(options=options, version_main=args.chrome_version)
