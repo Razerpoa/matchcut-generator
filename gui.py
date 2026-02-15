@@ -142,6 +142,12 @@ class GuiApp:
         self.show_browser_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(check_frame, text="Show Browser", variable=self.show_browser_var).pack(side=tk.LEFT, padx=5)
 
+        # Site Mode Preference
+        ttk.Label(input_frame, text="Site Mode:").grid(row=5, column=0, sticky=tk.W, pady=5)
+        self.site_mode_var = tk.StringVar(value="any")
+        self.site_mode_dropdown = ttk.Combobox(input_frame, textvariable=self.site_mode_var, values=["any", "dark", "light"], state="readonly", width=10)
+        self.site_mode_dropdown.grid(row=5, column=1, sticky=tk.W, pady=5, padx=5)
+
         # Run Button
         self.run_scraper_btn = ttk.Button(self.scraper_tab, text="START SCRAPER", style="Run.TButton", command=self.start_scraping)
         self.run_scraper_btn.pack(pady=10)
@@ -183,6 +189,10 @@ class GuiApp:
         self.custom_audio_var = tk.StringVar()
         ttk.Entry(audio_path_frame, textvariable=self.custom_audio_var, width=40).pack(side=tk.LEFT)
         ttk.Button(audio_path_frame, text="Browse", command=self.browse_audio).pack(side=tk.LEFT, padx=5)
+
+        # Generation Options
+        self.shuffle_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(video_frame, text="Shuffle Clips", variable=self.shuffle_var).grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=5)
 
         # Generate Button
         self.gen_video_btn = ttk.Button(self.video_tab, text="GENERATE VIDEO", style="Run.TButton", command=self.start_video_generation)
@@ -241,7 +251,8 @@ class GuiApp:
             max_crops_per_link=self.max_crops_var.get(),
             chrome_path=self.chrome_path_var.get(),
             pad_h=self.pad_h_var.get(),
-            pad_w=self.pad_w_var.get()
+            pad_w=self.pad_w_var.get(),
+            site_mode=self.site_mode_var.get()
         )
 
         threading.Thread(target=self.run_scraper_thread, args=(args,), daemon=True).start()
@@ -265,7 +276,8 @@ class GuiApp:
             'height': self.vid_height_var.get(),
             'frame_duration': self.vid_duration_var.get(),
             'use_audio': self.use_audio_var.get(),
-            'custom_audio_path': self.custom_audio_var.get()
+            'custom_audio_path': self.custom_audio_var.get(),
+            'shuffle': self.shuffle_var.get()
         }
 
         threading.Thread(target=self.run_video_thread, args=(params,), daemon=True).start()
@@ -279,6 +291,7 @@ class GuiApp:
                 frame_duration=params['frame_duration'],
                 use_audio=params['use_audio'],
                 custom_audio_path=params['custom_audio_path'],
+                shuffle=params['shuffle'],
                 progress_callback=self.progress_callback
             )
             if output_path:

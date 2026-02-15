@@ -13,3 +13,4 @@ crops/
 *.png
 *.jpg
 output/
+uv.lock

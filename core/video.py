@@ -1,6 +1,7 @@
 import os
 import glob
 import logging
+import random
 import numpy as np
 from moviepy import ImageClip, ColorClip, concatenate_videoclips, AudioFileClip, concatenate_audioclips, CompositeVideoClip, AudioClip
 
@@ -48,9 +49,12 @@ class VideoGenerator:
                                frame_duration=2, 
                                use_audio=False, 
                                custom_audio_path=None,
+                               shuffle=True,
                                progress_callback=None):
         
         image_files = sorted(glob.glob(os.path.join(crops_dir, "*.png")), key=os.path.getmtime)
+        if shuffle:
+            random.shuffle(image_files)
         if not image_files:
             logging.error("No crop images found in crops directory.")
             return None
@@ -100,6 +104,7 @@ class VideoGenerator:
             
             # Load and scale image
             img_clip = ImageClip(img_path).with_duration(duration_per_clip)
+            original_size = img_clip.size
             
             # Scale to fit width
             img_clip = img_clip.resized(width=width)
@@ -107,9 +112,33 @@ class VideoGenerator:
             # Ensure it fits height or scale down if it exceeds
             if img_clip.h > height:
                  img_clip = img_clip.resized(height=height)
+            
+            final_size = img_clip.size
+            scale_factor = final_size[0] / original_size[0]
 
-            # Center the image
-            img_clip = img_clip.with_position(('center', 'center'))
+            # Realigned Centering Logic
+            # Filename format: prefix_idx_CX_CY.png
+            try:
+                base_name = os.path.basename(img_path)
+                parts = os.path.splitext(base_name)[0].split('_')
+                # We expect at least prefix, idx, CX, CY (4 parts if prefix has no _)
+                # But since prefix can have _, we work from the end
+                cx_in_crop = int(parts[-2])
+                cy_in_crop = int(parts[-1])
+                
+                # Scaled center coordinates
+                scaled_cx = cx_in_crop * scale_factor
+                scaled_cy = cy_in_crop * scale_factor
+                
+                # Align scaled_cx/cy to video center (width/2, height/2)
+                # Position is (x, y) of top-left corner
+                pos_x = (width / 2) - scaled_cx
+                pos_y = (height / 2) - scaled_cy
+                img_clip = img_clip.with_position((pos_x, pos_y))
+                logging.debug(f"Realigned {base_name} to position ({pos_x}, {pos_y})")
+            except (ValueError, IndexError):
+                # Fallback to standard centering for old files or misformatted names
+                img_clip = img_clip.with_position(('center', 'center'))
             
             # Compose clip
             final_clip = CompositeVideoClip([bg, img_clip])

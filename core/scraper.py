@@ -6,7 +6,7 @@ from undetected_chromedriver import Chrome, ChromeOptions
 from selenium.common.exceptions import TimeoutException
 import pytesseract
 
-from .browser import get_limited_full_page_screenshot, handle_popups
+from .browser import get_limited_full_page_screenshot, handle_popups, get_site_mode
 from .vision import process_ocr_and_crop
 from .utils import PAD_H_DEFAULT, PAD_W_DEFAULT
 
@@ -23,6 +23,7 @@ def run_scraper(args, progress_callback=None):
     max_results = args.max_results
     max_crops_per_link = args.max_crops_per_link
     headless = not args.show_browser
+    site_mode_pref = getattr(args, 'site_mode', 'any')
 
     if not search_query:
         logging.error("Search Query is required. Aborting.")
@@ -46,9 +47,12 @@ def run_scraper(args, progress_callback=None):
         
         logging.info(f"Searching DuckDuckGo for: {search_query}")
         
+        results = []
         try:
             with DDGS() as ddgs:
-                results = list(ddgs.text(search_query, max_results=max_results))
+                # Initially fetch more than max_results to reduce refills
+                search_limit = max_results * 2 if site_mode_pref != "any" else max_results
+                results = list(ddgs.text(search_query, max_results=search_limit))
         except Exception as e:
             logging.error(f"Search failed: {e}")
             if progress_callback:
@@ -66,7 +70,8 @@ def run_scraper(args, progress_callback=None):
             progress_callback(0, 0, "Initializing Browser...")
         
         options = ChromeOptions()
-        options.add_argument("--headless" if headless else "")
+        if headless:
+            options.add_argument("--headless")
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--mute-audio")
 
@@ -79,16 +84,21 @@ def run_scraper(args, progress_callback=None):
             
         driver.set_page_load_timeout(30)
 
-        total_steps = len(results)
+        valid_sites_processed = 0
+        idx = 0
+        removed_sites_count = 0
         
-        for idx, result in enumerate(results):
+        while valid_sites_processed < max_results and idx < len(results):
+            result = results[idx]
+            idx += 1
+            
             if progress_callback:
-                progress_callback(idx, total_steps, f"Processing {idx+1}/{total_steps}: {result.get('title', 'Unknown')}")
+                progress_callback(valid_sites_processed, max_results, f"Processing {valid_sites_processed+1}/{max_results}: {result.get('title', 'Unknown')}")
 
             url = result.get('url') or result.get('href')
             if not url: continue
 
-            logging.info(f"[{idx+1}/{len(results)}] Processing: {url}")
+            logging.info(f"Processing ({valid_sites_processed+1}/{max_results}): {url}")
 
             try:
                 try:
@@ -99,32 +109,53 @@ def run_scraper(args, progress_callback=None):
                 time.sleep(2)
                 handle_popups(driver)
 
+                # Check Mode Preference
+                if site_mode_pref != "any":
+                    actual_mode = get_site_mode(driver)
+                    if actual_mode != site_mode_pref:
+                        logging.warning(f"Site {url} is {actual_mode} mode, but user preferred {site_mode_pref} mode. Removing site.")
+                        removed_sites_count += 1
+                        
+                        # Try to fetch another result if we are running low
+                        if (len(results) - idx) < (max_results - valid_sites_processed):
+                            logging.info(f"Fetching additional search results (Removed: {removed_sites_count})")
+                            try:
+                                with DDGS() as ddgs:
+                                    # Skip results we already have
+                                    more_results = list(ddgs.text(search_query, max_results=len(results) + 5))
+                                    for mr in more_results:
+                                        if mr not in results:
+                                            results.append(mr)
+                            except Exception as e:
+                                logging.error(f"Failed to fetch additional results: {e}")
+                        
+                        continue
+
                 # Scroll to trigger lazy loading
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight / 3);")
                 time.sleep(1)
                 driver.execute_script("window.scrollTo(0, 0);")
                 time.sleep(1)
 
-                screenshot_path = f"screenshot_{idx}.png"
+                screenshot_path = f"screenshot_{valid_sites_processed}.png"
                 get_limited_full_page_screenshot(driver, screenshot_path)
 
-                total_matches = 0
                 try:
                     matches = process_ocr_and_crop(
                         screenshot_path,
                         ocr_query,
-                        prefix=f"site_{idx}_{ocr_query.replace(' ', '_')}",
+                        prefix=f"site_{valid_sites_processed}_{ocr_query.replace(' ', '_')}",
                         max_crops=max_crops_per_link,
                         pad_h=getattr(args, 'pad_h', PAD_H_DEFAULT),
                         pad_w=getattr(args, 'pad_w', PAD_W_DEFAULT)
                     )
-                    total_matches += matches
-                    logging.info(f"Finished processing site {idx}. Total matches found: {total_matches}")
+                    logging.info(f"Finished processing site {valid_sites_processed}. Matches: {matches}")
+                    valid_sites_processed += 1
                 except pytesseract.TesseractNotFoundError:
                      logging.error("Tesseract not found during processing.")
                      break
                 except Exception as e:
-                    logging.exception(f"OCR/Crop failed for site {idx}: {e}")
+                    logging.exception(f"OCR/Crop failed for site {valid_sites_processed}: {e}")
 
                 if not args.keep_screenshots and os.path.exists(screenshot_path):
                     os.remove(screenshot_path)
@@ -133,8 +164,10 @@ def run_scraper(args, progress_callback=None):
                 logging.exception(f"Error processing {url}: {e}")
                 continue
         
+        logging.info(f"Scraping finished. Total valid sites: {valid_sites_processed}, Removed sites: {removed_sites_count}")
+        
         if progress_callback:
-             progress_callback(total_steps, total_steps, "Done!")
+             progress_callback(max_results, max_results, f"Done! (Processed {valid_sites_processed}, Removed {removed_sites_count})")
 
     except Exception as e:
         logging.exception(f"An error occurred: {e}")

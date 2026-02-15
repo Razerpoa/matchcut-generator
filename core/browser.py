@@ -89,3 +89,28 @@ def handle_popups(driver: Chrome) -> None:
         ActionChains(driver).send_keys(Keys.ESCAPE).perform()
     except:
         pass
+
+def get_site_mode(driver: Chrome) -> str:
+    """Detects if the site is dark mode or light mode based on background luminance."""
+    script = """
+    function getLuminance() {
+        let bg = window.getComputedStyle(document.body).backgroundColor;
+        if (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') {
+            bg = window.getComputedStyle(document.documentElement).backgroundColor;
+        }
+        
+        let rgb = bg.match(/\\d+/g);
+        if (!rgb || rgb.length < 3) return 255; // Default to light if we can't detect
+        
+        // standard luminance formula
+        return (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]);
+    }
+    return getLuminance();
+    """
+    try:
+        luminance = driver.execute_script(script)
+        # Luminance > 128 is generally considered 'light'
+        return "light" if luminance > 128 else "dark"
+    except Exception as e:
+        logging.error(f"Failed to detect site mode: {e}")
+        return "light" # Default fallback

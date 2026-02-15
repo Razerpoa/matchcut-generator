@@ -18,6 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-cp", "--chrome-path", type=str, help="Path to Chrome executable (optional).")
     parser.add_argument("-ph", "--pad-h", type=float, default=PAD_H_DEFAULT, help="Vertical padding multiplier (default: 5.0).")
     parser.add_argument("-pw", "--pad-w", type=float, default=PAD_W_DEFAULT, help="Horizontal padding multiplier (default: 1.0).")
+    parser.add_argument("-sm", "--site-mode", type=str, choices=["any", "dark", "light"], default="any", help="Preferred site mode (default: any).")
     return parser.parse_args()
 
 def check_tesseract() -> bool:

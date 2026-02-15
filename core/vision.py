@@ -95,21 +95,31 @@ def process_ocr_and_crop(image_path: str, search_text: str, output_dir: str = "c
         w = (max_x - min_x) // scale_factor
         h = (max_y - min_y) // scale_factor
         
-        # Padding
-        pad_h_px = int(h * pad_h) # vertical padding
-        pad_w_px = int(w * pad_w) # add some horizontal padding too
+        # Padding - allow asymmetric to maximize context
+        pad_h_px = int(h * pad_h)
+        pad_w_px = int(w * pad_w)
         
         left = max(0, x - pad_w_px)
         top = max(0, y - pad_h_px)
         right = min(original_img.width, x + w + pad_w_px)
         bottom = min(original_img.height, y + h + pad_h_px)
         
+        # Calculate text center relative to THIS CROP
+        # x, y is the top-left of the text in the ORIGINAL image
+        # left, top is the top-left of the CROP in the ORIGINAL image
+        # So text center in crop is: (x + w/2) - left
+        text_cx_in_crop = (x + w/2) - left
+        text_cy_in_crop = (y + h/2) - top
+
         crop_img = original_img.crop((left, top, right, bottom))
-        crop_filename = f"{prefix.replace(' ', '_')}_{found_count}.png"
+        
+        # Encode center in filename: prefix_idx_CX_CY.png
+        # Using integers for filename simplicity
+        crop_filename = f"{prefix.replace(' ', '_')}_{found_count}_{int(text_cx_in_crop)}_{int(text_cy_in_crop)}.png"
         crop_path = os.path.join(output_dir, crop_filename)
         crop_img.save(crop_path)
         
-        logging.info(f"Match found: '{search_text}' at ({x}, {y})")
+        logging.info(f"Match found: '{search_text}' at ({x}, {y}), center in crop: ({text_cx_in_crop}, {text_cy_in_crop})")
         found_count += 1
         
         start_index = match_index + len(search_text_normalized)
