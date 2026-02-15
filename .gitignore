@@ -9,10 +9,6 @@ wheels/
 # Virtual environments
 .venv
 
-# uv stuff
-uv.lock
-uv.toml
-
 crops/
 *.png
 *.jpg

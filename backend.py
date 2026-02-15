@@ -310,8 +310,7 @@ def run_scraper(args, progress_callback=None):
             driver = Chrome(options=options, version_main=args.chrome_version)
         except Exception as e:
             if "Binary Location Must be a String" in str(e) or isinstance(e, TypeError):
-                 logging.error("Failed to initialize Chrome: Binary Location Must be a String or not found. "
-                               "Please specify --chrome-path manually.")
+                 logging.error("Please install chrome or chromium first.")
             raise e
             
         driver.set_page_load_timeout(30) # Increased timeout
