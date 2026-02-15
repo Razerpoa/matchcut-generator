@@ -14,7 +14,7 @@ def main() -> None:
 
     # Pre-check Tesseract
     if not backend.check_tesseract():
-        error_msg = "Tesseract OCR not found. Please install it from https://github.com/UB-Mannheim/tesseract/wiki"
+        error_msg = "Tesseract OCR not found. Please install it first"
         logging.error(error_msg)
         
         # If running without args (likely GUI mode or double-click), show alert
