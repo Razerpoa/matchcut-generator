@@ -2,7 +2,8 @@ import sys
 import logging
 import tkinter as tk
 from tkinter import messagebox
-import backend
+import core.utils as utils
+import core.scraper as scraper
 import gui
 
 def main() -> None:
@@ -13,7 +14,7 @@ def main() -> None:
     )
 
     # Pre-check Tesseract
-    if not backend.check_tesseract():
+    if not utils.check_tesseract():
         error_msg = "Tesseract OCR not found. Please install it first"
         logging.error(error_msg)
         
@@ -30,10 +31,27 @@ def main() -> None:
         
         sys.exit(1)
 
+    if not utils.check_chrome():
+        error_msg = "Chrome not found. Please install it first"
+        logging.error(error_msg)
+        
+        # If running without args (likely GUI mode or double-click), show alert
+        if len(sys.argv) == 1:
+            try:
+                # Create a hidden root window just to show the error
+                root = tk.Tk()
+                root.withdraw() 
+                messagebox.showerror("Chrome Not Found", error_msg)
+                root.destroy()
+            except Exception:
+                pass # If tk fails, we at least logged it
+        
+        sys.exit(1)
+
     # Check if arguments are provided
     if len(sys.argv) > 1:
-        args = backend.parse_args()
-        backend.run_scraper(args)
+        args = utils.parse_args()
+        scraper.run_scraper(args)
     else:
         # GUI Mode
         # Setup queue handler for logging

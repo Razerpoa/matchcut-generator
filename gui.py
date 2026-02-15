@@ -5,7 +5,7 @@ import logging
 import threading
 import argparse
 
-import backend
+import core.scraper as scraper
 
 # Global queue for logging
 log_queue = queue.Queue()
@@ -119,7 +119,7 @@ class GuiApp:
         threading.Thread(target=self.run_thread, args=(args,), daemon=True).start()
 
     def run_thread(self, args):
-        backend.run_scraper(args, self.progress_callback)
+        scraper.run_scraper(args, self.progress_callback)
         self.root.after(0, self.finish_scraping)
         
     def progress_callback(self, current, total, message):
