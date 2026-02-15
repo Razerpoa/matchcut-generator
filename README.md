@@ -81,4 +81,4 @@ uv run main.py --search-query "Lionel Messi" --ocr-query "Messi" --keep-screensh
 
 ## License
 
-MIT [LICENSE](LICENSE)
+GNU GPLv2 [LICENSE](LICENSE)
