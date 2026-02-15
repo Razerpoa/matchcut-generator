@@ -395,18 +395,5 @@ def check_tesseract() -> bool:
         return True
     except (pytesseract.TesseractNotFoundError, SystemExit):
         pass
-
-    # 2. Check common installation paths
-    tesseract_paths = [
-        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-        os.path.join(os.getenv('LOCALAPPDATA', ''), r"Tesseract-OCR\tesseract.exe")
-    ]
-
-    for path in tesseract_paths:
-        if os.path.exists(path):
-            pytesseract.pytesseract.tesseract_cmd = path
-            logging.info(f"Found Tesseract at: {path}")
-            return True
             
     return False
