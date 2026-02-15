@@ -237,7 +237,37 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-cv", "--chrome-version", type=int, default=144, help="Chrome version to use.")
     parser.add_argument("-sb", "--show-browser", action="store_true", help="Show the browser window (default: False, runs headless).")
     parser.add_argument("-mc", "--max-crops-per-link", type=int, default=10, help="Max crops per links.")
+    parser.add_argument("-cp", "--chrome-path", type=str, help="Path to Chrome executable (optional).")
     return parser.parse_args()
+
+def find_chrome_executable() -> str:
+    """Finds the Chrome/Chromium executable across Windows and Linux."""
+    if sys.platform == "win32":
+        paths = [
+            os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Google", "Chrome", "Application", "chrome.exe"),
+            os.path.join(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"), "Google", "Chrome", "Application", "chrome.exe"),
+            os.path.join(os.environ.get("LocalAppData", ""), "Google", "Chrome", "Application", "chrome.exe"),
+        ]
+    else: # Linux/Mac
+        paths = [
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser",
+            "/snap/bin/chromium",
+            "/opt/google/chrome/google-chrome",
+        ]
+
+    for path in paths:
+        if os.path.exists(path):
+            return path
+    
+    # If not found in common paths, try 'which' on Linux or just return None
+    if sys.platform != "win32":
+        import shutil
+        return shutil.which("google-chrome") or shutil.which("chromium") or shutil.which("chromium-browser")
+        
+    return None
 
 def run_scraper(args, progress_callback=None):
     # Configure logging
@@ -305,7 +335,22 @@ def run_scraper(args, progress_callback=None):
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--mute-audio") # Mute audio
 
-        driver = Chrome(options=options, version_main=args.chrome_version)
+        chrome_path = getattr(args, 'chrome_path', None) or find_chrome_executable()
+        
+        if chrome_path:
+             logging.info(f"Using Chrome binary at: {chrome_path}")
+             options.binary_location = chrome_path
+        else:
+             logging.warning("Chrome binary path not found automatically. undetected_chromedriver will try to locate it.")
+
+        try:
+            driver = Chrome(options=options, version_main=args.chrome_version)
+        except Exception as e:
+            if "Binary Location Must be a String" in str(e) or isinstance(e, TypeError):
+                 logging.error("Failed to initialize Chrome: Binary Location Must be a String or not found. "
+                               "Please specify --chrome-path manually.")
+            raise e
+            
         driver.set_page_load_timeout(30) # Increased timeout
         print("DEBUG: Chrome driver initialized.", file=sys.stderr)
 
