@@ -110,26 +110,36 @@ def run_scraper(args, progress_callback=None):
                 handle_popups(driver)
 
                 # Check Mode Preference
+                should_invert = False
+                should_bw = False
                 if site_mode_pref != "any":
                     actual_mode = get_site_mode(driver)
                     if actual_mode != site_mode_pref:
-                        logging.warning(f"Site {url} is {actual_mode} mode, but user preferred {site_mode_pref} mode. Removing site.")
-                        removed_sites_count += 1
-                        
-                        # Try to fetch another result if we are running low
-                        if (len(results) - idx) < (max_results - valid_sites_processed):
-                            logging.info(f"Fetching additional search results (Removed: {removed_sites_count})")
-                            try:
-                                with DDGS() as ddgs:
-                                    # Skip results we already have
-                                    more_results = list(ddgs.text(search_query, max_results=len(results) + 5))
-                                    for mr in more_results:
-                                        if mr not in results:
-                                            results.append(mr)
-                            except Exception as e:
-                                logging.error(f"Failed to fetch additional results: {e}")
-                        
-                        continue
+                        pref_invert = getattr(args, 'invert_mismatched', False)
+                        pref_bw = getattr(args, 'bw_mismatched', False)
+
+                        if pref_invert or pref_bw:
+                            logging.info(f"Site {url} is {actual_mode} mode, but user preferred {site_mode_pref} mode. Applying requested filters (Invert={pref_invert}, B&W={pref_bw}).")
+                            should_invert = pref_invert
+                            should_bw = pref_bw
+                        else:
+                            logging.warning(f"Site {url} is {actual_mode} mode, but user preferred {site_mode_pref} mode. Removing site.")
+                            removed_sites_count += 1
+                            
+                            # Try to fetch another result if we are running low
+                            if (len(results) - idx) < (max_results - valid_sites_processed):
+                                logging.info(f"Fetching additional search results (Removed: {removed_sites_count})")
+                                try:
+                                    with DDGS() as ddgs:
+                                        # Skip results we already have
+                                        more_results = list(ddgs.text(search_query, max_results=len(results) + 5))
+                                        for mr in more_results:
+                                            if mr not in results:
+                                                results.append(mr)
+                                except Exception as e:
+                                    logging.error(f"Failed to fetch additional results: {e}")
+                            
+                            continue
 
                 # Scroll to trigger lazy loading
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight / 3);")
@@ -147,7 +157,9 @@ def run_scraper(args, progress_callback=None):
                         prefix=f"site_{valid_sites_processed}_{ocr_query.replace(' ', '_')}",
                         max_crops=max_crops_per_link,
                         pad_h=getattr(args, 'pad_h', PAD_H_DEFAULT),
-                        pad_w=getattr(args, 'pad_w', PAD_W_DEFAULT)
+                        pad_w=getattr(args, 'pad_w', PAD_W_DEFAULT),
+                        invert_color=should_invert,
+                        bw_color=should_bw
                     )
                     logging.info(f"Finished processing site {valid_sites_processed}. Matches: {matches}")
                     valid_sites_processed += 1

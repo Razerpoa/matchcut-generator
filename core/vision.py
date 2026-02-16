@@ -3,9 +3,32 @@ import logging
 import cv2
 import numpy as np
 import pytesseract
-from PIL import Image
+from PIL import Image, ImageOps
 
 from .utils import PAD_H_DEFAULT, PAD_W_DEFAULT
+
+def is_colorful(img: Image.Image, threshold: float = 2.0) -> bool:
+    """
+    Checks if an image is colorful by looking at the standard deviation of its color channels.
+    A low standard deviation across R, G, B implies the image is mostly grayscale.
+    """
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+    
+    # Convert to numpy array
+    arr = np.array(img).astype(float)
+    
+    # Calculate the mean of R, G, B for each pixel
+    means = np.mean(arr, axis=2, keepdims=True)
+    
+    # Calculate difference between each channel and the mean
+    diffs = arr - means
+    
+    # Calculate standard deviation of differences
+    # If the std is high, it means channels vary significantly (colorful)
+    std = np.std(diffs)
+    
+    return std > threshold
 
 def preprocess_for_ocr(img: Image.Image) -> tuple[Image.Image, int]:
     # 1. Convert to Grayscale
@@ -23,7 +46,7 @@ def preprocess_for_ocr(img: Image.Image) -> tuple[Image.Image, int]:
 
     return Image.fromarray(thresh), 2 # Return image and the scale factor
 
-def process_ocr_and_crop(image_path: str, search_text: str, output_dir: str = "crops", prefix: str = "match", max_crops: int = 10, pad_h: float = PAD_H_DEFAULT, pad_w: float = PAD_W_DEFAULT) -> int:
+def process_ocr_and_crop(image_path: str, search_text: str, output_dir: str = "crops", prefix: str = "match", max_crops: int = 10, pad_h: float = PAD_H_DEFAULT, pad_w: float = PAD_W_DEFAULT, invert_color: bool = False, bw_color: bool = False) -> int:
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -113,6 +136,15 @@ def process_ocr_and_crop(image_path: str, search_text: str, output_dir: str = "c
 
         crop_img = original_img.crop((left, top, right, bottom))
         
+        if bw_color:
+            crop_img = crop_img.convert('L')
+            logging.info(f"Applied B&W filter to crop {found_count}.")
+
+        if invert_color:
+            # Note: ImageOps.invert works on RGB or L modes
+            crop_img = ImageOps.invert(crop_img)
+            logging.info(f"Applied invert filter to crop {found_count}.")
+
         # Encode center in filename: prefix_idx_CX_CY.png
         # Using integers for filename simplicity
         crop_filename = f"{prefix.replace(' ', '_')}_{found_count}_{int(text_cx_in_crop)}_{int(text_cy_in_crop)}.png"

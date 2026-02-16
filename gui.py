@@ -142,6 +142,12 @@ class GuiApp:
         self.show_browser_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(check_frame, text="Show Browser", variable=self.show_browser_var).pack(side=tk.LEFT, padx=5)
 
+        self.invert_mismatched_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(check_frame, text="Invert Mismatched Sites", variable=self.invert_mismatched_var).pack(side=tk.LEFT, padx=5)
+
+        self.bw_mismatched_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(check_frame, text="B&W Mismatched Sites", variable=self.bw_mismatched_var).pack(side=tk.LEFT, padx=5)
+
         # Site Mode Preference
         ttk.Label(input_frame, text="Site Mode:").grid(row=5, column=0, sticky=tk.W, pady=5)
         self.site_mode_var = tk.StringVar(value="any")
@@ -252,7 +258,9 @@ class GuiApp:
             chrome_path=self.chrome_path_var.get(),
             pad_h=self.pad_h_var.get(),
             pad_w=self.pad_w_var.get(),
-            site_mode=self.site_mode_var.get()
+            site_mode=self.site_mode_var.get(),
+            invert_mismatched=self.invert_mismatched_var.get(),
+            bw_mismatched=self.bw_mismatched_var.get()
         )
 
         threading.Thread(target=self.run_scraper_thread, args=(args,), daemon=True).start()
